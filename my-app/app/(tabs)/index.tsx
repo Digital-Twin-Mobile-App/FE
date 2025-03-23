@@ -14,7 +14,8 @@ export default function TabOneScreen() {
       <Link href="/login" >Login</Link>
       <Link href="/signup" >Signup</Link>
       <Link href="/sso" >SSO</Link>
-      <Link href="/forgot-password" >Forgot Password</Link>
+      <Link href="/forgot-password" >Forgot Password</Link> 
+      <Link href="/profile" >Profile</Link>
     </View>
   );
 }

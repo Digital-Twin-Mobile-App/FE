@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width, height } = Dimensions.get('window');
 
 const slides = [
-  { id: '1', title: 'Chào mừng đến với Plant Phenotyping', description: 'Ứng dụng thông minh giúp bạn theo dõi và phân tích tình trạng cây trồng dễ dàng.', image: require('../assets/images/onboarding1.png'), gradient: ['#4CAF50', '#2E7D32'] },
+  { id: '1', title: 'Chào mừng đến với Plantypheno', description: 'Ứng dụng thông minh giúp bạn theo dõi và phân tích tình trạng cây trồng dễ dàng.', image: require('../assets/images/onboarding1.png'), gradient: ['#4CAF50', '#2E7D32'] },
   { id: '2', title: 'Chụp ảnh cây trồng', description: 'Chụp ảnh hoặc video cây trồng của bạn để phân tích sức khỏe.', image: require('../assets/images/onboarding2.png'), gradient: ['#2E7D32', '#1B5E20'] },
   { id: '3', title: 'Phân tích thông minh', description: 'Nhận kết quả phân tích chi tiết và khuyến nghị chăm sóc từ AI.', image: require('../assets/images/onboarding3.png'), gradient: ['#1B5E20', '#0A280E'] },
 ];
