@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
@@ -8,10 +8,34 @@ import PlantCard from '../../components/PlantCard';
 import FarmCard from '../../components/FarmCard';
 import HeroSection from '../../components/HeroSection';
 import { router } from 'expo-router';
+import { getUserInfo } from '../../services/user';
 
 const Home = () => {
   const [searchText, setSearchText] = useState('');
+  const [userInfo, setUserInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    avatarUrl: 'https://i.pravatar.cc/300',
+  });
   const router = useRouter();
+
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const info = await getUserInfo();
+        setUserInfo({
+          firstName: info.firstName || '',
+          lastName: info.lastName || '',
+          email: info.email || '',
+          avatarUrl: info.avatarUrl || 'https://i.pravatar.cc/300',
+        });
+      } catch (error) {
+        console.error('Failed to load user info:', error);
+      }
+    };
+    loadUserInfo();
+  }, []);
 
   const recentPlants = [
     {
@@ -68,15 +92,19 @@ const Home = () => {
       >
         <View className="flex-row justify-between items-center">
           <View className="flex-row items-center">
-            <View className="w-12 h-12 rounded-full bg-white items-center justify-center mr-3 shadow-sm">
+            <TouchableOpacity 
+              className="w-12 h-12 rounded-full overflow-hidden shadow-sm"
+              onPress={() => router.push('/profile')}
+            >
               <Image 
-                source={{ uri: 'https://i.pravatar.cc/150' }}
-                className="w-full h-full rounded-full"
+                source={{ uri: userInfo.avatarUrl }}
+                className="w-full h-full"
+                resizeMode="cover"
               />
-            </View>
-            <View>
+            </TouchableOpacity>
+            <View className="ml-3">
               <Text className="text-sm text-gray-600">Welcome back</Text>
-              <Text className="text-2xl font-bold text-[#2B5329]">Plant Care</Text>
+              <Text className="text-2xl font-bold text-[#2B5329]">{userInfo.firstName || 'Plant Care'}</Text>
             </View>
           </View>
           <View className="flex-row space-x-3">

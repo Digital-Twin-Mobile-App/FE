@@ -1,11 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Image, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Image, Modal, FlatList, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock data for plant types
+const API_URL = 'https://4b78-171-243-48-89.ngrok-free.app';
+
+// Plant status options
+const plantStatus = [
+  'HEALTHY',
+  'UNHEALTHY',
+  'NEEDS_CARE'
+];
+
+// Watering frequency options
+const wateringFrequency = [
+  'DAILY',
+  'WEEKLY',
+  'BIWEEKLY',
+  'MONTHLY'
+];
+
+// Plant types
 const plantTypes = [
   'Indoor Plants',
   'Outdoor Plants',
@@ -30,9 +48,14 @@ export default function AddPlant() {
   const [plantType, setPlantType] = useState('');
   const [notes, setNotes] = useState('');
   const [image, setImage] = useState<string | null>(null);
+  const [status, setStatus] = useState('HEALTHY');
+  const [frequency, setFrequency] = useState('DAILY');
   const [showTypeModal, setShowTypeModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showImageOptions, setShowImageOptions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const filteredPlantTypes = plantTypes.filter(type =>
     type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -56,15 +79,62 @@ export default function AddPlant() {
     setShowImageOptions(false);
   };
 
-  const handleSubmit = () => {
-    // TODO: Implement plant creation logic
-    console.log({
-      name: plantName,
-      type: plantType,
-      notes,
-      image,
-    });
-    router.back();
+  const handleSubmit = async () => {
+    if (!plantName.trim()) {
+      Alert.alert('Error', 'Please enter a plant name');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Get the auth token
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`${API_URL}/plants/analize?name=${encodeURIComponent(plantName)}&status=${status}&frequency=${frequency}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: plantName,
+          type: plantType,
+          notes,
+          status,
+          frequency,
+          imageUrl: image,
+        }),
+      });
+
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please login again.');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to add plant');
+      }
+
+      const data = await response.json();
+      console.log('Plant added successfully:', data);
+      Alert.alert('Success', 'Plant added successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Error adding plant:', error);
+      if (error.message === 'Authentication failed. Please login again.') {
+        Alert.alert('Session Expired', 'Please login again to continue.', [
+          { text: 'OK', onPress: () => router.push('/login') }
+        ]);
+      } else {
+        Alert.alert('Error', error.message || 'Failed to add plant. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -123,6 +193,30 @@ export default function AddPlant() {
           </TouchableOpacity>
         </View>
 
+        {/* Plant Status */}
+        <View className="mb-6">
+          <Text className="text-lg font-semibold text-[#2B5329] mb-2">Plant Status</Text>
+          <TouchableOpacity 
+            onPress={() => setShowStatusModal(true)}
+            className="bg-gray-50 rounded-xl p-4 flex-row justify-between items-center"
+          >
+            <Text className="text-[#2B5329]">{status}</Text>
+            <Ionicons name="chevron-down" size={20} color="#9E9E9E" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Watering Frequency */}
+        <View className="mb-6">
+          <Text className="text-lg font-semibold text-[#2B5329] mb-2">Watering Frequency</Text>
+          <TouchableOpacity 
+            onPress={() => setShowFrequencyModal(true)}
+            className="bg-gray-50 rounded-xl p-4 flex-row justify-between items-center"
+          >
+            <Text className="text-[#2B5329]">{frequency}</Text>
+            <Ionicons name="chevron-down" size={20} color="#9E9E9E" />
+          </TouchableOpacity>
+        </View>
+
         {/* Notes */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-[#2B5329] mb-2">Notes</Text>
@@ -141,10 +235,11 @@ export default function AddPlant() {
         {/* Submit Button */}
         <TouchableOpacity 
           onPress={handleSubmit}
-          className="bg-[#4CAF50] rounded-xl py-4 mt-4"
+          disabled={isLoading}
+          className={`rounded-xl py-4 mt-4 ${isLoading ? 'bg-gray-400' : 'bg-[#4CAF50]'}`}
         >
           <Text className="text-white text-center font-semibold text-lg">
-            Add Plant
+            {isLoading ? 'Adding Plant...' : 'Add Plant'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -191,39 +286,103 @@ export default function AddPlant() {
         </View>
       </Modal>
 
+      {/* Status Modal */}
+      <Modal
+        visible={showStatusModal}
+        animationType="slide"
+        transparent={true}
+      >
+        <View className="flex-1 bg-white">
+          <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
+            <Text className="text-xl font-semibold text-[#2B5329]">Select Plant Status</Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)}>
+              <Ionicons name="close" size={24} color="#9E9E9E" />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={plantStatus}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => {
+                  setStatus(item);
+                  setShowStatusModal(false);
+                }}
+                className="p-4 border-b border-gray-100"
+              >
+                <Text className="text-[#2B5329]">{item}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Frequency Modal */}
+      <Modal
+        visible={showFrequencyModal}
+        animationType="slide"
+        transparent={true}
+      >
+        <View className="flex-1 bg-white">
+          <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
+            <Text className="text-xl font-semibold text-[#2B5329]">Select Watering Frequency</Text>
+            <TouchableOpacity onPress={() => setShowFrequencyModal(false)}>
+              <Ionicons name="close" size={24} color="#9E9E9E" />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={wateringFrequency}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => {
+                  setFrequency(item);
+                  setShowFrequencyModal(false);
+                }}
+                className="p-4 border-b border-gray-100"
+              >
+                <Text className="text-[#2B5329]">{item}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
       {/* Image Options Modal */}
       <Modal
         visible={showImageOptions}
         animationType="slide"
         transparent={true}
       >
-        <View className="flex-1 bg-white">
-          <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
-            <Text className="text-xl font-semibold text-[#2B5329]">Add Photo</Text>
-            <TouchableOpacity onPress={() => setShowImageOptions(false)}>
-              <Ionicons name="close" size={24} color="#9E9E9E" />
-            </TouchableOpacity>
-          </View>
-
-          <View className="p-4 space-y-4">
-            <TouchableOpacity
+        <View className="flex-1 bg-black/50" onTouchEnd={() => setShowImageOptions(false)}>
+          <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl">
+            <View className="p-4 border-b border-gray-200">
+              <Text className="text-xl font-semibold text-center text-[#2B5329]">Add Plant Photo</Text>
+            </View>
+            
+            <TouchableOpacity 
+              className="p-4 flex-row items-center justify-center border-b border-gray-100"
               onPress={() => pickImage(true)}
-              className="flex-row items-center p-4 bg-gray-50 rounded-xl"
             >
-              <View className="w-12 h-12 rounded-full bg-[#4CAF50]/20 items-center justify-center mr-4">
-                <Ionicons name="camera" size={24} color="#4CAF50" />
-              </View>
-              <Text className="text-[#2B5329] text-lg">Take Photo</Text>
+              <Ionicons name="camera" size={24} color="#4CAF50" className="mr-2" />
+              <Text className="text-lg ml-2 text-[#2B5329]">Take Photo</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
+            
+            <TouchableOpacity 
+              className="p-4 flex-row items-center justify-center"
               onPress={() => pickImage(false)}
-              className="flex-row items-center p-4 bg-gray-50 rounded-xl"
             >
-              <View className="w-12 h-12 rounded-full bg-[#4CAF50]/20 items-center justify-center mr-4">
-                <Ionicons name="images" size={24} color="#4CAF50" />
-              </View>
-              <Text className="text-[#2B5329] text-lg">Choose from Gallery</Text>
+              <Ionicons name="images" size={24} color="#4CAF50" className="mr-2" />
+              <Text className="text-lg ml-2 text-[#2B5329]">Choose from Library</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              className="p-4 border-t border-gray-200"
+              onPress={() => setShowImageOptions(false)}
+            >
+              <Text className="text-red-500 text-lg text-center">Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

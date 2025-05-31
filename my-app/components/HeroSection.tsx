@@ -47,10 +47,26 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         className="absolute inset-0"
       />
       
-      {/* Animated Background Pattern */}
-      <View className="absolute inset-0 opacity-10">
-        <View className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full -translate-x-20 -translate-y-20" />
-        <View className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-20 translate-y-20" />
+      {/* Decorative Background Pattern */}
+      <View className="absolute inset-0">
+        <LinearGradient
+          colors={['rgba(255,255,255,0.1)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="absolute top-0 left-0 w-full h-24 opacity-50"
+          style={{
+            transform: [{ skewY: '-10deg' }]
+          }}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.1)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="absolute bottom-0 right-0 w-full h-24 opacity-50"
+          style={{
+            transform: [{ skewY: '10deg' }]
+          }}
+        />
       </View>
 
       <View className="flex-1 p-6">
