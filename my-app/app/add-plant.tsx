@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://4b78-171-243-48-89.ngrok-free.app';
+const API_URL = 'https://c5af-171-243-49-189.ngrok-free.app';
 
 // Plant status options
 const plantStatus = [
@@ -80,8 +80,8 @@ export default function AddPlant() {
   };
 
   const handleSubmit = async () => {
-    if (!plantName.trim()) {
-      Alert.alert('Error', 'Please enter a plant name');
+    if (!image) {
+      Alert.alert('Error', 'Please add a plant photo');
       return;
     }
 
@@ -93,20 +93,21 @@ export default function AddPlant() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${API_URL}/plants/analize?name=${encodeURIComponent(plantName)}&status=${status}&frequency=${frequency}`, {
+      // Create FormData
+      const formData = new FormData();
+      formData.append('image', {
+        uri: image,
+        type: 'image/jpeg',
+        name: 'plant.jpg'
+      } as any);
+
+      const response = await fetch(`${API_URL}/plants/create`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
-        body: JSON.stringify({
-          name: plantName,
-          type: plantType,
-          notes,
-          status,
-          frequency,
-          imageUrl: image,
-        }),
+        body: formData,
       });
 
       if (response.status === 401) {
@@ -119,18 +120,18 @@ export default function AddPlant() {
       }
 
       const data = await response.json();
-      console.log('Plant added successfully:', data);
-      Alert.alert('Success', 'Plant added successfully!', [
+      console.log('Plant created successfully:', data);
+      Alert.alert('Success', 'Plant created successfully!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
-      console.error('Error adding plant:', error);
+      console.error('Error creating plant:', error);
       if (error.message === 'Authentication failed. Please login again.') {
         Alert.alert('Session Expired', 'Please login again to continue.', [
           { text: 'OK', onPress: () => router.push('/login') }
         ]);
       } else {
-        Alert.alert('Error', error.message || 'Failed to add plant. Please try again.');
+        Alert.alert('Error', error.message || 'Failed to create plant. Please try again.');
       }
     } finally {
       setIsLoading(false);

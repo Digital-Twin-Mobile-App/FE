@@ -6,7 +6,23 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": [
+      "node",
+      "jest",
+      "istanbul-lib-coverage",
+      "istanbul-lib-report",
+      "prop-types"
+    ],
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "jsx": "react-native",
+    "moduleResolution": "node16",
+    "module": "Node16",
+    "baseUrl": ".",
+    "target": "esnext"
   },
   "include": [
     "**/*.ts",
@@ -14,5 +30,8 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

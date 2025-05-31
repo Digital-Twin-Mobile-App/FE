@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://4b78-171-243-48-89.ngrok-free.app';
+const API_URL = 'https://c5af-171-243-49-189.ngrok-free.app'
 
 interface ApiResponse<T> {
   code: number;
