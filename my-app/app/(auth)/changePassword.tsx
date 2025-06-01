@@ -23,7 +23,7 @@ export default function ChangePasswordScreen() {
 
     try {
       setLoading(true);
-      const response = await fetch('https://b2fd-171-243-49-207.ngrok-free.app/auth/changePassword', {
+      const response = await fetch('https://c35c-171-243-49-189.ngrok-free.app', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,7 +39,7 @@ export default function ChangePasswordScreen() {
 
       if (data.code === 200 && data.result.authenticated) {
         // Store the token
-        await AsyncStorage.setItem('token', data.result.token);
+        await AsyncStorage.setItem('userToken', data.result.token);
         router.replace('/');
       } else {
         throw new Error('Password change failed');

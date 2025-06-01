@@ -201,159 +201,98 @@ export default function ProfileScreen() {
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             tintColor="#4CAF50"
-            colors={['#4CAF50']}
           />
         }
       >
-        <Animated.View 
-          className="relative"
-          style={{ height: headerHeight }}
-        >
+        <Animated.View style={{ height: headerHeight }} className="bg-green-500">
           <LinearGradient
             colors={['#4CAF50', '#2E7D32']}
-            className="w-full h-full"
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.8)']}
-            className="absolute bottom-0 left-0 right-0 h-32"
-          />
-          
-          <Animated.View 
-            className="absolute bottom-0 left-0 right-0 items-center pb-4"
-            style={{
-              transform: [
-                { scale: avatarScale },
-                { translateY: avatarTranslateY }
-              ]
-            }}
+            className="flex-1"
           >
-            <TouchableOpacity 
-              className="relative"
-              onPress={() => setShowFullImage(true)}
-            >
-              <View className="w-48 h-48 rounded-full overflow-hidden shadow-lg">
-                <Image
-                  source={{ uri: userInfo.avatarUrl }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              </View>
-              <TouchableOpacity 
-                className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-white items-center justify-center border-2 border-[#4CAF50] shadow-lg"
+            <View className="flex-1 items-center justify-center">
+              <TouchableOpacity
                 onPress={() => setShowImageOptions(true)}
+                className="relative"
               >
-                <Ionicons name="camera" size={24} color="#4CAF50" />
+                <Animated.Image
+                  source={{ uri: userInfo.avatarUrl }}
+                  className="w-32 h-32 rounded-full border-4 border-white"
+                  style={{
+                    transform: [
+                      { scale: avatarScale },
+                      { translateY: avatarTranslateY }
+                    ]
+                  }}
+                />
+                <View className="absolute bottom-0 right-0 bg-white rounded-full p-2">
+                  <Ionicons name="camera" size={20} color="#4CAF50" />
+                </View>
               </TouchableOpacity>
-            </TouchableOpacity>
-            <Text className="text-white text-4xl font-bold mt-3 tracking-wide">{`${userInfo.firstName} ${userInfo.lastName}`}</Text>
-            <Text className="text-white/90 text-base mt-1">{userInfo.email}</Text>
-          </Animated.View>
+              <Text className="text-white text-2xl font-bold mt-4">
+                {userInfo.firstName} {userInfo.lastName}
+              </Text>
+              <Text className="text-white/80 text-base mt-1">
+                {userInfo.email}
+              </Text>
+            </View>
+          </LinearGradient>
         </Animated.View>
 
-        <View className="px-4 py-4">
-          <View className="flex-row justify-between bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg">
-            {stats.map((stat, index) => (
-              <View key={index} className="items-center">
-                <View className="w-12 h-12 rounded-full bg-[#4CAF50]/10 items-center justify-center mb-2">
-                  <Ionicons name={stat.icon} size={24} color="#4CAF50" />
-                </View>
-                <Text className="text-xl font-bold text-[#2B5329]">{stat.value}</Text>
-                <Text className="text-gray-600 text-sm">{stat.label}</Text>
+        <View className="px-4 py-6">
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={item.onPress}
+              className="flex-row items-center bg-white p-4 rounded-xl mb-3 shadow-sm"
+            >
+              <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: item.color + '20' }}>
+                <Ionicons name={item.icon} size={24} color={item.color} />
               </View>
-            ))}
-          </View>
+              <Text className="text-gray-800 text-lg ml-4 flex-1">{item.label}</Text>
+              <Ionicons name="chevron-forward" size={24} color="#9E9E9E" />
+            </TouchableOpacity>
+          ))}
 
-          <View className="mt-4 space-y-3">
-            {menuItems.map((item, index) => (
-              <TouchableOpacity 
-                key={index}
-                className="flex-row items-center bg-white/90 backdrop-blur-md rounded-xl p-4 shadow-lg active:scale-[0.98]"
-                onPress={item.onPress}
-              >
-                <View className="w-10 h-10 rounded-full items-center justify-center mr-4" style={{ backgroundColor: `${item.color}20` }}>
-                  <Ionicons name={item.icon} size={20} color={item.color} />
-                </View>
-                <Text className="text-gray-800 text-base flex-1 font-medium">{item.label}</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9E9E9E" />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity 
-            className="mt-4 flex-row items-center justify-center bg-red-50 rounded-xl p-4 shadow-lg active:scale-[0.98]"
+          <TouchableOpacity
             onPress={handleLogout}
+            className="flex-row items-center bg-red-50 p-4 rounded-xl mt-4 shadow-sm"
           >
-            <Ionicons name="log-out" size={20} color="#EF4444" />
-            <Text className="text-red-500 text-base font-medium ml-2">Logout</Text>
+            <View className="w-10 h-10 rounded-full items-center justify-center bg-red-100">
+              <Ionicons name="log-out" size={24} color="#EF5350" />
+            </View>
+            <Text className="text-red-500 text-lg ml-4 flex-1">Logout</Text>
+            <Ionicons name="chevron-forward" size={24} color="#9E9E9E" />
           </TouchableOpacity>
         </View>
       </Animated.ScrollView>
 
-      {/* Image Options Modal */}
       <Modal
         visible={showImageOptions}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowImageOptions(false)}
       >
-        <TouchableOpacity 
-          className="flex-1 bg-black/50"
+        <TouchableOpacity
+          className="flex-1 bg-black/50 items-center justify-center"
           activeOpacity={1}
           onPress={() => setShowImageOptions(false)}
         >
-          <View className="mt-auto bg-white rounded-t-3xl">
-            <View className="p-4 border-b border-gray-200">
-              <Text className="text-xl font-bold text-center">Change Profile Photo</Text>
-            </View>
-            <TouchableOpacity 
-              className="p-4 flex-row items-center justify-center border-b border-gray-200"
+          <BlurView intensity={20} className="w-4/5 rounded-2xl overflow-hidden">
+            <TouchableOpacity
+              className="flex-row items-center p-4 border-b border-gray-200"
               onPress={() => handleImagePick(true)}
             >
-              <Ionicons name="camera" size={24} color="#4CAF50" className="mr-2" />
-              <Text className="text-lg ml-2">Take Photo</Text>
+              <Ionicons name="camera" size={24} color="#4CAF50" />
+              <Text className="text-gray-800 text-lg ml-4">Take Photo</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              className="p-4 flex-row items-center justify-center"
+            <TouchableOpacity
+              className="flex-row items-center p-4"
               onPress={() => handleImagePick(false)}
             >
-              <Ionicons name="images" size={24} color="#4CAF50" className="mr-2" />
-              <Text className="text-lg ml-2">Choose from Library</Text>
+              <Ionicons name="images" size={24} color="#4CAF50" />
+              <Text className="text-gray-800 text-lg ml-4">Choose from Library</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              className="p-4 border-t border-gray-200"
-              onPress={() => setShowImageOptions(false)}
-            >
-              <Text className="text-red-500 text-lg text-center">Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Full Image Modal */}
-      <Modal
-        visible={showFullImage}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowFullImage(false)}
-      >
-        <TouchableOpacity 
-          className="flex-1 bg-black/90 items-center justify-center"
-          activeOpacity={1}
-          onPress={() => setShowFullImage(false)}
-        >
-          <Image
-            source={{ uri: userInfo.avatarUrl }}
-            className="w-screen h-screen"
-            resizeMode="contain"
-          />
-          <TouchableOpacity 
-            className="absolute top-12 right-6"
-            onPress={() => setShowFullImage(false)}
-          >
-            <Ionicons name="close-circle" size={32} color="white" />
-          </TouchableOpacity>
+          </BlurView>
         </TouchableOpacity>
       </Modal>
     </View>

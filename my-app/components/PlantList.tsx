@@ -1,155 +1,223 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Animated, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-
-interface Plant {
-  id: string;
-  name: string;
-  image: string;
-  type: string;
-  watering: string;
-  health: string;
-  isFavorite: boolean;
-}
+import { getPlants, getRecentPlants } from '../services/plant';
+import type { Plant } from '../services/plant';
+import { useRefresh } from '../context/RefreshContext';
 
 interface PlantListProps {
-  plants: Plant[];
   title: string;
   subtitle: string;
-  showWateringStatus?: boolean;
-  hideAddButton?: boolean;
+  limit?: number;
+  showPagination?: boolean;
 }
 
 const { width } = Dimensions.get('window');
 
 const PlantList: React.FC<PlantListProps> = ({
-  plants,
   title,
   subtitle,
-  showWateringStatus = false,
-  hideAddButton = false
+  limit,
+  showPagination = false
 }) => {
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const router = useRouter();
+  const [plants, setPlants] = useState<Plant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalPlants, setTotalPlants] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const { shouldRefresh, setShouldRefresh } = useRefresh();
 
-  const headerScale = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [1, 0.8],
-    extrapolate: 'clamp',
-  });
+  useEffect(() => {
+    loadPlants();
+  }, [currentPage, shouldRefresh]);
 
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, -20],
-    extrapolate: 'clamp',
-  });
+  useEffect(() => {
+    if (shouldRefresh) {
+      setShouldRefresh(false);
+    }
+  }, [shouldRefresh]);
 
-  const categories = [
-    { id: 'all', name: 'All Plants' },
-    { id: 'indoor', name: 'Indoor' },
-    { id: 'outdoor', name: 'Outdoor' },
-    { id: 'favorites', name: 'Favorites' },
-  ];
+  const loadPlants = async () => {
+    try {
+      setLoading(true);
+      if (limit) {
+        const recentPlants = await getRecentPlants();
+        setPlants(recentPlants);
+        const fullResponse = await getPlants(0);
+        setTotalPlants(fullResponse.totalElements);
+        setTotalPages(fullResponse.totalPages);
+      } else {
+        const response = await getPlants(currentPage);
+        setPlants(response.content);
+        setTotalPlants(response.totalElements);
+        setTotalPages(response.totalPages);
+      }
+      setError(null);
+    } catch (err: any) {
+      console.error('Error loading plants:', err);
+      setError(err.message || 'Failed to load plants');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filteredPlants = plants.filter(plant => {
-    if (selectedCategory === 'all') return true;
-    if (selectedCategory === 'indoor') return plant.type === 'Indoor';
-    if (selectedCategory === 'outdoor') return plant.type === 'Outdoor';
-    if (selectedCategory === 'favorites') return plant.isFavorite;
-    return true;
-  });
+  const renderPaginationBar = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages - 1, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(0, endPage - maxVisiblePages + 1);
+    }
+
+    return (
+      <View className="flex-row justify-center items-center py-4 bg-white rounded-xl shadow-sm mx-4 mb-4">
+        <TouchableOpacity
+          onPress={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+          disabled={currentPage === 0}
+          className={`px-4 py-2 mx-1 rounded-lg ${
+            currentPage === 0 ? 'bg-gray-100' : 'bg-[#4CAF50]/10'
+          }`}
+        >
+          <Ionicons 
+            name="chevron-back" 
+            size={20} 
+            color={currentPage === 0 ? '#9CA3AF' : '#4CAF50'} 
+          />
+        </TouchableOpacity>
+
+        {startPage > 0 && (
+          <>
+            <TouchableOpacity
+              onPress={() => setCurrentPage(0)}
+              className="px-4 py-2 mx-1 rounded-lg bg-[#4CAF50]/10"
+            >
+              <Text className="text-[#4CAF50] font-medium">1</Text>
+            </TouchableOpacity>
+            {startPage > 1 && (
+              <Text className="px-2 text-gray-400">•••</Text>
+            )}
+          </>
+        )}
+
+        {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((page) => (
+          <TouchableOpacity
+            key={page}
+            onPress={() => setCurrentPage(page)}
+            className={`px-4 py-2 mx-1 rounded-lg ${
+              currentPage === page ? 'bg-[#4CAF50]' : 'bg-[#4CAF50]/10'
+            }`}
+          >
+            <Text className={`font-medium ${
+              currentPage === page ? 'text-white' : 'text-[#4CAF50]'
+            }`}>
+              {page + 1}
+            </Text>
+          </TouchableOpacity>
+        ))}
+
+        {endPage < totalPages - 1 && (
+          <>
+            {endPage < totalPages - 2 && (
+              <Text className="px-2 text-gray-400">•••</Text>
+            )}
+            <TouchableOpacity
+              onPress={() => setCurrentPage(totalPages - 1)}
+              className="px-4 py-2 mx-1 rounded-lg bg-[#4CAF50]/10"
+            >
+              <Text className="text-[#4CAF50] font-medium">{totalPages}</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <TouchableOpacity
+          onPress={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+          disabled={currentPage === totalPages - 1}
+          className={`px-4 py-2 mx-1 rounded-lg ${
+            currentPage === totalPages - 1 ? 'bg-gray-100' : 'bg-[#4CAF50]/10'
+          }`}
+        >
+          <Ionicons 
+            name="chevron-forward" 
+            size={20} 
+            color={currentPage === totalPages - 1 ? '#9CA3AF' : '#4CAF50'} 
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 items-center justify-center p-4">
+        <Text className="text-red-500 text-center">{error}</Text>
+        <TouchableOpacity 
+          className="mt-4 bg-[#4CAF50] px-4 py-2 rounded-lg"
+          onPress={() => {
+            setCurrentPage(0);
+            loadPlants();
+          }}
+        >
+          <Text className="text-white">Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1">
-      <Animated.View 
-        style={{
-          transform: [
-            { scale: headerScale },
-            { translateY: headerTranslateY }
-          ]
-        }}
-        className="px-5 pt-4 pb-2"
-      >
-        <View className="flex-row justify-between items-center">
+      <View className="px-6 mb-4">
           <View>
             <Text className="text-2xl font-bold text-[#2B5329]">{title}</Text>
             <Text className="text-gray-600">{subtitle}</Text>
           </View>
-          {!hideAddButton && (
-            <Link href="/add-plant" asChild>
-              <TouchableOpacity className="w-10 h-10 bg-[#4CAF50] rounded-full items-center justify-center">
-                <Ionicons name="add" size={24} color="white" />
-              </TouchableOpacity>
-            </Link>
-          )}
         </View>
 
         <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          className="mt-4"
-        >
-          <View className="flex-row space-x-3">
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                onPress={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-full ${
-                  selectedCategory === category.id 
-                    ? 'bg-[#4CAF50]' 
-                    : 'bg-gray-100'
-                }`}
-              >
-                <Text className={`font-medium ${
-                  selectedCategory === category.id 
-                    ? 'text-white' 
-                    : 'text-gray-600'
-                }`}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-      </Animated.View>
-
-      <Animated.ScrollView 
-        className="flex-1 px-6"
+        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
       >
-        <View className="space-y-4">
-          {filteredPlants.map((plant, index) => (
+        <View className="px-6">
+          {plants.map((plant) => (
             <Link 
               key={plant.id} 
-              href={{ pathname: "/plant/[id]", params: { id: plant.id } }} 
+              href={{
+                pathname: "/plant/[id]",
+                params: { 
+                  id: plant.id, 
+                  name: plant.name,
+                  coverImage: plant.plantCoverUrl
+                }
+              }}
               asChild
             >
-              <TouchableOpacity 
-                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.98]"
-                style={{
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 3,
-                }}
-              >
-                <View className="flex-row">
+              <TouchableOpacity className="mb-4">
+                <View className="flex-row bg-white rounded-2xl overflow-hidden shadow-sm">
                   <View className="w-32 h-32 relative">
-                    <Image
-                      source={{ uri: plant.image }}
-                      className="w-full h-full"
-                      resizeMode="cover"
-                    />
+                    {plant.plantCoverUrl ? (
+                      <Image
+                        source={{ uri: plant.plantCoverUrl }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-full h-full bg-gray-100 items-center justify-center">
+                        <Text className="text-gray-500 text-sm text-center px-2">Choose Avatar</Text>
+                      </View>
+                    )}
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.7)']}
                       className="absolute bottom-0 left-0 right-0 h-16"
@@ -157,86 +225,37 @@ const PlantList: React.FC<PlantListProps> = ({
                     <View className="absolute bottom-2 left-2 right-2">
                       <View className="flex-row items-center">
                         <View className="w-2 h-2 rounded-full bg-[#4CAF50] mr-2" />
-                        <Text className="text-white text-sm font-medium">{plant.type}</Text>
+                        <Text className="text-white text-sm font-medium">
+                          {plant.name || 'Unnamed Plant'}
+                        </Text>
                       </View>
-                    </View>
-                    <View className="absolute top-2 right-2">
-                      <BlurView intensity={20} className="rounded-full overflow-hidden">
-                        <TouchableOpacity 
-                          className="w-8 h-8 items-center justify-center"
-                          onPress={() => {}}
-                        >
-                          <Ionicons 
-                            name={plant.isFavorite ? "heart" : "heart-outline"} 
-                            size={18} 
-                            color={plant.isFavorite ? "#4CAF50" : "#9E9E9E"} 
-                          />
-                        </TouchableOpacity>
-                      </BlurView>
                     </View>
                   </View>
                   
                   <View className="flex-1 p-4">
-                    <View className="flex-row justify-between items-start">
-                      <View className="flex-1">
-                        <Text className="text-lg font-semibold text-[#2B5329]">{plant.name}</Text>
-                        <View className="flex-row items-center mt-1">
-                          <View className="w-6 h-6 rounded-full bg-[#4CAF50]/10 items-center justify-center mr-2">
-                            <Ionicons name="water" size={14} color="#4CAF50" />
-                          </View>
-                          <Text className="text-gray-600">{plant.watering}</Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center mt-3">
-                      <View className={`px-3 py-1 rounded-full ${
-                        plant.health === 'Excellent' ? 'bg-green-100' :
-                        plant.health === 'Healthy' ? 'bg-blue-100' :
-                        'bg-yellow-100'
-                      }`}>
-                        <View className="flex-row items-center">
-                          <Ionicons 
-                            name={
-                              plant.health === 'Excellent' ? 'checkmark-circle' :
-                              plant.health === 'Healthy' ? 'leaf' :
-                              'warning'
-                            }
-                            size={12}
-                            color={
-                              plant.health === 'Excellent' ? '#059669' :
-                              plant.health === 'Healthy' ? '#3B82F6' :
-                              '#D97706'
-                            }
-                            className="mr-1"
-                          />
-                          <Text className={`text-xs font-medium ${
-                            plant.health === 'Excellent' ? 'text-green-700' :
-                            plant.health === 'Healthy' ? 'text-blue-700' :
-                            'text-yellow-700'
-                          }`}>
-                            {plant.health}
-                          </Text>
-                        </View>
-                      </View>
-                      {showWateringStatus && (
-                        <View className="ml-2 px-3 py-1 rounded-full bg-orange-100">
-                          <View className="flex-row items-center">
-                            <Ionicons name="water" size={12} color="#D97706" className="mr-1" />
-                            <Text className="text-xs font-medium text-orange-700">
-                              Needs Water
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-                    </View>
+                    <Text className="text-lg font-semibold text-[#2B5329]">
+                      {plant.name || 'Unnamed Plant'}
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
             </Link>
           ))}
+
+          {limit && totalPlants > limit && !showPagination && (
+            <TouchableOpacity 
+              onPress={() => router.push('/plants')}
+              className="bg-[#4CAF50]/10 py-3 rounded-xl mb-4"
+            >
+              <Text className="text-[#4CAF50] text-center font-semibold">
+                View All {totalPlants} Plants
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {showPagination && renderPaginationBar()}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 };

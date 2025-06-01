@@ -19,8 +19,8 @@
     "allowJs": true,
     "esModuleInterop": true,
     "jsx": "react-native",
-    "moduleResolution": "node16",
-    "module": "Node16",
+    "moduleResolution": "bundler",
+    "module": "esnext",
     "baseUrl": ".",
     "target": "esnext"
   },

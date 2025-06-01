@@ -14,12 +14,14 @@ import Animated, {
 
 interface HeroSectionProps {
   onScanPress?: () => void;
+  totalPlants: number;
 }
 
 const { width } = Dimensions.get('window');
 
 const HeroSection: React.FC<HeroSectionProps> = ({
-  onScanPress
+  onScanPress,
+  totalPlants
 }) => {
   const pulseStyle = useAnimatedStyle(() => {
     return {
@@ -97,21 +99,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({
                   <Ionicons name="leaf" size={20} color="white" />
                 </View>
                 <View>
-                  <Text className="text-white text-xl font-semibold">12 Plants</Text>
+                  <Text className="text-white text-xl font-semibold">{totalPlants} Plants</Text>
                   <Text className="text-white/70 text-sm">In your care</Text>
                 </View>
               </View>
             </TouchableOpacity>
           </Link>
-          <Link href="/watering" asChild>
+
+          <Link href="/plant-care-guide" asChild>
             <TouchableOpacity className="w-[48%] bg-white/10 backdrop-blur-md rounded-2xl p-4 active:bg-white/20">
               <View className="flex-row items-center">
                 <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mr-3">
-                  <Ionicons name="water" size={20} color="white" />
+                  <Ionicons name="bulb-outline" size={20} color="white" />
                 </View>
                 <View>
-                  <Text className="text-white text-xl font-semibold">3 Plants</Text>
-                  <Text className="text-white/70 text-sm">Need watering</Text>
+                  <Text className="text-white text-xl font-semibold">Tips</Text>
+                  <Text className="text-white/70 text-sm">Plant care guide</Text>
                 </View>
               </View>
             </TouchableOpacity>

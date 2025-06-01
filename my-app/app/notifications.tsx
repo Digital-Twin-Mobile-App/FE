@@ -1,109 +1,90 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Stack } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, SafeAreaView, StatusBar } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  type: 'watering' | 'care' | 'system';
-  read: boolean;
-}
+import { getNotificationsByType, getUnreadNotifications, markAllAsRead, type Notification } from '../services/notification';
 
 export default function NotificationsScreen() {
-  const notifications: Notification[] = [
-    {
-      id: '1',
-      title: 'Watering Reminder',
-      message: 'Your Monstera needs watering today!',
-      time: '2 hours ago',
-      type: 'watering',
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Care Tip',
-      message: 'Check out this new care guide for your Snake Plant',
-      time: '5 hours ago',
-      type: 'care',
-      read: true
-    },
-    {
-      id: '3',
-      title: 'System Update',
-      message: 'New features available in the latest update',
-      time: '1 day ago',
-      type: 'system',
-      read: true
-    }
-  ];
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'watering':
-        return 'water';
-      case 'care':
-        return 'leaf';
-      case 'system':
-        return 'information-circle';
-      default:
-        return 'notifications';
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      const [unread, all] = await Promise.all([
+        getUnreadNotifications(),
+        getNotificationsByType('PLANT_STAGE_CHANGE')
+      ]);
+      
+      // Combine unread and all notifications, ensuring unread ones are at the top
+      const unreadIds = new Set(unread.map(n => n.id));
+      const allNotifications = all.content.filter(n => !unreadIds.has(n.id));
+      setNotifications([...unread, ...allNotifications]);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getNotificationColor = (type: Notification['type']) => {
-    switch (type) {
-      case 'watering':
-        return '#4CAF50';
-      case 'care':
-        return '#2196F3';
-      case 'system':
-        return '#FF9800';
-      default:
-        return '#9E9E9E';
-    }
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      // Mark all as read when leaving the screen
+      markAllAsRead().catch(console.error);
+    };
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
-    <View className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" backgroundColor="#F0F7F4" />
+      
       <Stack.Screen 
         options={{
           title: 'Notifications',
-          headerStyle: {
-            backgroundColor: '#4CAF50',
-          },
-          headerTintColor: '#fff',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#4CAF50" />
+            </TouchableOpacity>
+          ),
         }} 
       />
-
-      <ScrollView className="flex-1 p-4">
-        {notifications.map((notification) => (
-          <TouchableOpacity
-            key={notification.id}
-            className={`flex-row items-start bg-white rounded-xl p-4 mb-3 shadow-sm ${!notification.read ? 'border-l-4' : ''}`}
-            style={{ borderLeftColor: !notification.read ? getNotificationColor(notification.type) : 'transparent' }}
-          >
-            <View 
-              className="w-10 h-10 rounded-full items-center justify-center mr-4 mt-1"
-              style={{ backgroundColor: `${getNotificationColor(notification.type)}20` }}
+      
+      <View className="flex-1 mt-12">
+        <ScrollView className="flex-1">
+          {notifications.map((notification) => (
+            <View
+              key={notification.id}
+              className={`p-4 border-b border-gray-100 ${!notification.read ? 'bg-green-50' : ''}`}
             >
-              <Ionicons name={getNotificationIcon(notification.type)} size={20} color={getNotificationColor(notification.type)} />
-            </View>
-            
-            <View className="flex-1">
-              <View className="flex-row justify-between items-start">
-                <Text className={`text-base font-medium ${notification.read ? 'text-gray-800' : 'text-black'}`}>
-                  {notification.title}
-                </Text>
-                <Text className="text-gray-500 text-sm">{notification.time}</Text>
+              <View className="flex-row items-start">
+                <View className="w-10 h-10 rounded-full bg-[#4CAF50]/10 items-center justify-center mr-3">
+                  <Ionicons name="leaf" size={20} color="#4CAF50" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-lg font-semibold text-[#2B5329]">{notification.title}</Text>
+                  <Text className="text-gray-600 mt-1">{notification.content}</Text>
+                  <Text className="text-gray-400 text-sm mt-2">{formatDate(notification.createdAt)}</Text>
+                </View>
               </View>
-              <Text className="text-gray-600 mt-1">{notification.message}</Text>
             </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
+          ))}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 } 

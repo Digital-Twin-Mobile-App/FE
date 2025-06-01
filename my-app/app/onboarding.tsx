@@ -1,9 +1,10 @@
 // app/onboarding.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dimensions, ScrollView, View, Text, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,13 +19,42 @@ export default function OnboardingScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+
+  const checkLoginStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        router.replace('/(tabs)/home');
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    }
+  };
+
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
       const next = currentIndex + 1;
       scrollRef.current?.scrollTo({ x: next * width, animated: true });
       setCurrentIndex(next);
     } else {
-      router.replace('/(tabs)');
+      router.replace('/(auth)/login');
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        router.replace('/(tabs)/home');
+      } else {
+        router.replace('/(auth)/login');
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+      router.replace('/(auth)/login');
     }
   };
 
@@ -63,7 +93,7 @@ export default function OnboardingScreen() {
 
       <View className="absolute bottom-0 left-0 right-0 p-5 pb-10">
         <View className="flex-row justify-between items-center mb-4">
-          <TouchableOpacity onPress={() => router.replace('/(tabs)')}><Text className="text-white text-lg font-medium">Bỏ qua</Text></TouchableOpacity>
+          <TouchableOpacity onPress={handleSkip}><Text className="text-white text-lg font-medium">Bỏ qua</Text></TouchableOpacity>
           <TouchableOpacity onPress={handleNext} className="bg-white px-6 py-2 rounded-full shadow-md">
             <Text className="text-green-800 text-lg font-bold">{currentIndex === slides.length - 1 ? 'Bắt đầu' : 'Tiếp theo'}</Text>
           </TouchableOpacity>

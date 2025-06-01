@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Link, useRouter } from 'expo-router';
+import { Link, useRouter, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import SearchBar from '../../components/SearchBar';
 import PlantCard from '../../components/PlantCard';
@@ -9,6 +9,11 @@ import FarmCard from '../../components/FarmCard';
 import HeroSection from '../../components/HeroSection';
 import { router } from 'expo-router';
 import { getUserInfo } from '../../services/user';
+import { getUnreadCount } from '../../services/notification';
+import PlantList from '../../components/PlantList';
+import { getPlants } from '../../services/plant';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRefresh } from '../../context/RefreshContext';
 
 const Home = () => {
   const [searchText, setSearchText] = useState('');
@@ -18,23 +23,52 @@ const Home = () => {
     email: '',
     avatarUrl: 'https://i.pravatar.cc/300',
   });
-  const router = useRouter();
+  const [totalPlants, setTotalPlants] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const { shouldRefresh, setShouldRefresh } = useRefresh();
+
+  const loadData = async () => {
+    try {
+      // Load user info
+      const info = await getUserInfo();
+      setUserInfo({
+        firstName: info.firstName || '',
+        lastName: info.lastName || '',
+        email: info.email || '',
+        avatarUrl: info.avatarUrl || 'https://i.pravatar.cc/300',
+      });
+
+      // Check unread notifications
+      console.log('Checking unread notifications...');
+      const unreadCount = await getUnreadCount();
+      console.log('Unread notifications count:', unreadCount);
+      setUnreadNotifications(unreadCount);
+      console.log('Updated unreadNotifications state:', unreadCount);
+
+      // Load total plants
+      const response = await getPlants(0);
+      setTotalPlants(response.totalElements);
+    } catch (error) {
+      console.error('Error in loadData:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    const loadUserInfo = async () => {
-      try {
-        const info = await getUserInfo();
-        setUserInfo({
-          firstName: info.firstName || '',
-          lastName: info.lastName || '',
-          email: info.email || '',
-          avatarUrl: info.avatarUrl || 'https://i.pravatar.cc/300',
-        });
-      } catch (error) {
-        console.error('Failed to load user info:', error);
-      }
-    };
-    loadUserInfo();
+    if (shouldRefresh) {
+      loadData();
+      setShouldRefresh(false);
+    }
+  }, [shouldRefresh]);
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const recentPlants = [
@@ -76,14 +110,18 @@ const Home = () => {
 
   const quickActions = [
     { id: '1', name: 'Add Plant', icon: 'add-circle-outline', color: '#4CAF50', onPress: () => router.push('/add-plant') },
-    { id: '2', name: 'Analytics', icon: 'analytics-outline', color: '#2196F3', onPress: () => router.push('/analytics') },
-    { id: '3', name: 'Schedule', icon: 'calendar-outline', color: '#FFC107', onPress: () => router.push('/schedule') },
-    { id: '4', name: 'Settings', icon: 'settings-outline', color: '#9C27B0', onPress: () => router.push('/settings') },
+    { id: '2', name: 'Settings', icon: 'settings-outline', color: '#9C27B0', onPress: () => router.push('/settings') },
   ];
 
   return (
     <SafeAreaView className="flex-1 bg-[#F0F7F4]">
       <StatusBar barStyle="dark-content" backgroundColor="#F0F7F4" />
+      
+      <Stack.Screen 
+        options={{
+          headerShown: false
+        }} 
+      />
       
       {/* Header */}
       <LinearGradient
@@ -112,7 +150,9 @@ const Home = () => {
               className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-sm"
               onPress={() => router.push('/notifications')}
             >
-              <View className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
+              {unreadNotifications > 0 && (
+                <View className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
+              )}
               <Ionicons name="notifications" size={22} color="#2B5329" />
             </TouchableOpacity>
           </View>
@@ -123,11 +163,20 @@ const Home = () => {
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4CAF50']}
+            tintColor="#4CAF50"
+          />
+        }
       >
         {/* Hero Section */}
         <View className="px-5 pt-2">
           <HeroSection 
             onScanPress={() => console.log('Scan pressed')}
+            totalPlants={totalPlants}
           />
         </View>
 
@@ -141,77 +190,33 @@ const Home = () => {
         </View>
 
         {/* Quick Actions */}
-        <View className="px-5 mb-6">
+        <View className="px-6 py-4">
+          <Text className="text-xl font-bold text-[#2B5329] mb-4">Quick Actions</Text>
           <View className="flex-row flex-wrap justify-between">
             {quickActions.map((action) => (
               <TouchableOpacity 
                 key={action.id}
-                className="w-[48%] rounded-2xl p-4 mb-4 overflow-hidden"
                 onPress={action.onPress}
+                className="w-[48%] bg-white rounded-xl p-4 mb-4 items-center"
+                style={{ elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }}
               >
-                <LinearGradient
-                  colors={[`${action.color}15`, `${action.color}30`]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  className="absolute inset-0"
-                />
-                <View className="relative">
-                  <View 
-                    className="w-12 h-12 rounded-xl items-center justify-center mb-3"
-                    style={{ backgroundColor: `${action.color}30` }}
-                  >
+                <View className="w-12 h-12 rounded-full items-center justify-center mb-2" style={{ backgroundColor: `${action.color}20` }}>
                     <Ionicons name={action.icon as any} size={24} color={action.color} />
-                  </View>
-                  <Text className="text-[#2B5329] font-semibold">{action.name}</Text>
                 </View>
+                <Text className="text-[#2B5329] font-medium">{action.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Recent Plants */}
-        <View className="mt-4">
-          <View className="px-5 flex-row justify-between items-center mb-4">
-            <View>
-              <Text className="text-xl font-semibold text-[#2B5329]">Recent Plants</Text>
-              <Text className="text-sm text-gray-600">Your latest additions</Text>
-            </View>
-            <TouchableOpacity className="bg-[#4CAF50] rounded-full px-4 py-2">
-              <Text className="text-white font-medium">View all</Text>
-            </TouchableOpacity>
-          </View>
+        <PlantList
+          title="Recent Plants"
+          subtitle="Your recently added plants"
+          limit={5}
+        />
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-            className="py-2"
-          >
-            {recentPlants.map((plant, index) => (
-              <View 
-                key={plant.id} 
-                style={{ 
-                  marginRight: index === recentPlants.length - 1 ? 0 : 16,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Link href={{ pathname: "/plant/[id]", params: { id: plant.id } }} asChild>
-                  <PlantCard
-                    image={plant.image}
-                    name={plant.name}
-                    onPress={() => {}}
-                  />
-                </Link>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Farms */}
+        {/* Farms
         <View className="mt-6">
           <View className="px-5 flex-row justify-between items-center mb-4">
             <View>
@@ -240,7 +245,7 @@ const Home = () => {
               ))}
             </View>
           </View>
-        </View>
+        </View> */}
       </ScrollView>
     </SafeAreaView>
   );

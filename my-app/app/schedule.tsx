@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, StyleSheet, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -50,13 +50,6 @@ export default function Schedule() {
       plantName: '',
       time: new Date(),
     });
-  };
-
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-    if (selectedTime) {
-      setNewTask(prev => ({ ...prev, time: selectedTime }));
-    }
   };
 
   const formatTime = (date: Date) => {
@@ -203,11 +196,17 @@ export default function Schedule() {
       {/* Time Picker */}
       {showTimePicker && (
         <DateTimePicker
+          testID="dateTimePicker"
           value={newTask.time}
           mode="time"
           is24Hour={false}
-          display="default"
-          onChange={handleTimeChange}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event: any, selectedTime?: Date) => {
+            setShowTimePicker(false);
+            if (selectedTime) {
+              setNewTask(prev => ({ ...prev, time: selectedTime }));
+            }
+          }}
         />
       )}
     </SafeAreaView>
